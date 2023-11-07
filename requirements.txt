@@ -7,3 +7,4 @@ pdfkit
 PyMySQL
 PyPDF2
 python_docx
+uvicorn
