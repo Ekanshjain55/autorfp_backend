@@ -2,11 +2,14 @@ import openai
 from config import API_KEY
 
 openai.api_key = API_KEY
+client = openai.OpenAI(
+    api_key=API_KEY
+)
 
 def get_chatgpt_response(prompt, model="gpt-3.5-turbo-16k", temperature=0.6, max_tokens=9000, n=1):
     messages = [{"role": "system", "content": "You are a Senior Software architect..."}, {"role": "user", "content": prompt}]
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=model,
             messages=messages,
             temperature=temperature,
