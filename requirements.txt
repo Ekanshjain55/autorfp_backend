@@ -2,7 +2,7 @@ beautifulsoup4
 docx
 fastapi
 Markdown
-openai
+openai==0.28.0
 pdfkit
 PyMySQL
 PyPDF2
