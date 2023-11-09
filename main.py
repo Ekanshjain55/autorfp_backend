@@ -8,8 +8,7 @@ import os
 import pymysql
 import uuid
 from tempfile import NamedTemporaryFile
-import asyncio
-import aiopg
+
 
 app = FastAPI()
 
@@ -84,28 +83,31 @@ async def generate_rfp(file: UploadFile = File(..., description="Path to the SoW
     """
     generated_rfp_sections = get_chatgpt_response(prompt)
     
-    async with create_connection_pool() as pool:
-        # Use the pool to obtain a connection
-        async with pool.acquire() as conn:
-            cursor = await conn.cursor()
-
+    db_connection = pymysql.connect(
+        host="127.0.0.1",
+        user="root",
+        password="password",
+        database="auto_rfp"
+    )
 #create a cursor object to interact with the database
-   
+    cursor = db_connection.cursor()
+
     # Create a table to store the Markdown content with a UUID primary key
-    await cursor.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS markdown_content (
             id CHAR(36) PRIMARY KEY,
             content TEXT
         )
     """)
     new_uuid= str(uuid.uuid4())
+    shared_data=new_uuid
     # Insert the generated Markdown content into the database
-    await cursor.execute("""
+    cursor.execute("""
         INSERT INTO markdown_content (id, content)
         VALUES (%s, %s)
     """, (new_uuid, generated_rfp_sections))
     # Commit the changes to the database
-    await conn.commit()
+    db_connection.commit()
     print("Markdown content added to the database with UUID:", new_uuid)
     return new_uuid
     # Ensure the directory exists
