@@ -8,9 +8,19 @@ import os
 import pymysql
 import uuid
 from tempfile import NamedTemporaryFile
+import asyncio
+import aiopg
 
 app = FastAPI()
 
+async def create_connection_pool():
+    pool = await aiopg.create_pool(
+        host="127.0.0.1",
+        user="root",
+        password="password",
+        database="auto_rfp"
+    )
+    return pool
 
 @app.post("/generate_rfp/")
 async def generate_rfp(file: UploadFile = File(..., description="Path to the SoW file")):
@@ -46,13 +56,13 @@ async def generate_rfp(file: UploadFile = File(..., description="Path to the SoW
     (Frame the project's objectives here. Keep it organized, easily comprehensible, and in line with the `sow`)
 
     ### SCOPE OF WORK
-    (Expound on the project’s scope of work here)
+    (Expound on the project's scope of work here)
 
     ### TECHNOLOGY STACK 
-    (Specify the technology stack applicable for the project’s practical completion. Remember to only highlight the necessary technologies that emphasize our technical expertise. Arrange them according to their associated domain such as Database, Front-End, Back-End, Deployment, etc. All necessary technology should be methodically detailed here)
+    (Specify the technology stack applicable for the project' practical completion. Remember to only highlight the necessary technologies that emphasize our technical expertise. Arrange them according to their associated domain such as Database, Front-End, Back-End, Deployment, etc. All necessary technology should be methodically detailed here)
 
     ### RISKS AND MITIGATION
-    (Identify potential risks linked to the project’s implementation and the corresponding solution strategies here) 
+    (Identify potential risks linked to the project's implementation and the corresponding solution strategies here) 
 
     ### CONCLUSION  
     (Conclude the proposal here)
@@ -74,31 +84,28 @@ async def generate_rfp(file: UploadFile = File(..., description="Path to the SoW
     """
     generated_rfp_sections = get_chatgpt_response(prompt)
     
-    db_connection = pymysql.connect(
-        host="127.0.0.1",
-            user="root",
-            password="password",
-            database="auto_rfp"
-    )
-#create a cursor object to interact with the database
-    cursor = db_connection.cursor()
+    async with create_connection_pool() as pool:
+        # Use the pool to obtain a connection
+        async with pool.acquire() as conn:
+            cursor = await conn.cursor()
 
+#create a cursor object to interact with the database
+   
     # Create a table to store the Markdown content with a UUID primary key
-    cursor.execute("""
+    await cursor.execute("""
         CREATE TABLE IF NOT EXISTS markdown_content (
             id CHAR(36) PRIMARY KEY,
             content TEXT
         )
     """)
     new_uuid= str(uuid.uuid4())
-    shared_data=new_uuid
     # Insert the generated Markdown content into the database
-    cursor.execute("""
+    await cursor.execute("""
         INSERT INTO markdown_content (id, content)
         VALUES (%s, %s)
     """, (new_uuid, generated_rfp_sections))
     # Commit the changes to the database
-    db_connection.commit()
+    await conn.commit()
     print("Markdown content added to the database with UUID:", new_uuid)
     return new_uuid
     # Ensure the directory exists
@@ -111,9 +118,9 @@ async def edit_rfp(uuid: str = Body(..., embed=True),
     # Connect to the database
     db_connection = pymysql.connect(
         host="127.0.0.1",
-            user="root",
-            password="password",
-            database="auto_rfp"
+        user="root",
+        password="password",
+        database="auto_rfp"
     )
 
     with db_connection.cursor() as db_cursor:
@@ -230,9 +237,9 @@ async def generate_rfp_from_verbal(verbal_requirements: str = Body(..., descript
     
     db_connection = pymysql.connect(
         host="127.0.0.1",
-            user="root",
-            password="password",
-            database="auto_rfp"
+        user="root",
+        password="password",
+        database="auto_rfp"
     )
 #create a cursor object to interact with the database
     cursor = db_connection.cursor()
